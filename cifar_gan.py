@@ -18,7 +18,7 @@ from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.layers import Input, Dense, LeakyReLU, Dropout, BatchNormalization
 
 #loading dataset
-data=tf.keras.datasets.mnist
+data=tf.keras.datasets.cifar100
 (xtrain,ytrain),(xtest,ytest)= data.load_data()
 
 xtrain,xtest=xtrain/255.0 *2 -1, xtest/255.0 * 2 -1
@@ -30,7 +30,7 @@ xtest=xtest.reshape(-1,d)
 print(n,h,w,d)
 
 #Dimensionality of latent space
-latent_dim=256
+latent_dim=100
 
 #Generator
 
@@ -89,8 +89,8 @@ combined_model.compile(loss='binary_crossentropy',optimizer=Adam(0.0002,0.5))
 
 #initializing values
 batch_size=32
-epochs=300000
-sample_period=3000 #generate and save some data every sample period
+epochs=30000
+sample_period=300 #generate and save some data every sample period
 
 #batch labels
 ones=np.ones(batch_size)

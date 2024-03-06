@@ -15,7 +15,19 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import SGD, Adam
-from tensorflow.keras.layers import Input, Dense, LeakyReLU, Dropout, BatchNormalization
+from tensorflow.keras.layers import Input , Flatten, Reshape, Conv2DTranspose, Dense, LeakyReLU, Dropout, BatchNormalization
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    # Restrict TensorFlow to only allocate 1GB of memory on the first GPU
+    try:
+        tf.config.experimental.set_virtual_device_configuration(gpus[0],
+       [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
+        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        # Virtual devices must be set before GPUs have been initialized
+        print(e)
 
 #loading dataset
 data=tf.keras.datasets.mnist
@@ -30,33 +42,68 @@ xtest=xtest.reshape(-1,d)
 print(n,h,w,d)
 
 #Dimensionality of latent space
-latent_dim=256
+latent_dim=100
 
 #Generator
 
 def build_generator(latent_dim):
-  i=Input(shape=(latent_dim,))
-  x=Dense(256, activation=LeakyReLU(alpha=0.2))(i)
-  x=BatchNormalization(momentum=0.8)(x)
-  x=Dense(512,activation=LeakyReLU(alpha=0.2))(x)
-  x=BatchNormalization(momentum=0.8)(x)
-  x=Dense(1024,activation=LeakyReLU(alpha=0.2))(x)
-  x=BatchNormalization(momentum=0.8)(x)
-  x=Dense(d,activation='tanh')(x)
+    # Input layer
+    i = Input(shape=(latent_dim,))
+    
+    # Project and reshape
+    x = Flatten()(i)
+    x = Dense(128 * 7 * 7)(x)
+    x = Reshape((7, 7, 128))(x)
+    
+    # Transposed convolution layers
+    x = Conv2DTranspose(128, kernel_size=4, strides=2, padding='same')(x)
+    x = LeakyReLU(alpha=0.2)(x)
+    x = BatchNormalization()(x)
+    
+    x = Conv2DTranspose(64, kernel_size=4, strides=2, padding='same')(x)
+    x = LeakyReLU(alpha=0.2)(x)
+    x = BatchNormalization()(x)
+    
+    # Output layer
+    x = Conv2DTranspose(1, kernel_size=7, activation='tanh', padding='same')(x)
 
-  model=Model(i,x)
-  return model
-
+    # Model
+    model = Model(i, x)
+    return model
+  
 # Discriminator
+inputshape=(28,28,1)
+def build_discriminator(inputshape):
+    # Input layer
+    i = Input(shape=(inputshape))
+    
+    # Project and reshape
+    x = Dense(128 * 7 * 7)(i)
+    x = Reshape((7, 7, 128))(x)
+    
+    # Transposed convolution layers
+    x = Conv2DTranspose(128, kernel_size=4, strides=2, padding='same')(x)
+    x = LeakyReLU(alpha=0.2)(x)
+    x = BatchNormalization()(x)
+    
+    x = Conv2DTranspose(64, kernel_size=4, strides=2, padding='same')(x)
+    x = LeakyReLU(alpha=0.2)(x)
+    x = BatchNormalization()(x)
+    
+    # Flatten layer
+    x = Flatten()(x)
+    
+    # Dense layer
+    x = Dense(7 * 7 * 128, activation='relu')(x)
+        # Output layer
+    x = Reshape((7, 7, 128))(x)
 
-def build_discriminator(image_size):
-  i=Input(shape=(image_size,))
-  x=Dense(512,activation=LeakyReLU(alpha=0.2))(i)
-  x=Dense(256,activation=LeakyReLU(alpha=0.8))(x)
-  x=Dense(1,activation='sigmoid')(x)
+    # Transposed convolution layers
+    x = Conv2DTranspose(1, kernel_size=4, strides=2, padding='same', activation='tanh')(x)
 
-  model=Model(i,x)
-  return model
+    # Model
+    model = Model(i, x)
+    return model
 
 #compiling both models
 
@@ -88,7 +135,7 @@ combined_model.compile(loss='binary_crossentropy',optimizer=Adam(0.0002,0.5))
 #Training the GAN
 
 #initializing values
-batch_size=32
+batch_size=2
 epochs=300000
 sample_period=3000 #generate and save some data every sample period
 
@@ -120,7 +167,7 @@ def sample_images(epoch):
       axs[i,j].imshow(img[idx].reshape(h,w),cmap='gray')
       axs[i,j].axis('off')
       idx+=1
-  fig.savefig(r"C:\Users\abhiu\Desktop\college stuff\sem 6\Deep Learning\gan_images\%d.png" %  epoch)
+  fig.savefig(r"C:\Users\abhiu\Desktop\college stuff\sem 6\Deep Learning\gan_images\MNIST_DCGAN\%d.png" %  epoch)
   plt.close()
 
 #main training loops

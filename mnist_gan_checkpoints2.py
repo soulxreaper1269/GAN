@@ -120,7 +120,7 @@ def sample_images(epoch):
       axs[i,j].imshow(img[idx].reshape(h,w),cmap='gray')
       axs[i,j].axis('off')
       idx+=1
-  fig.savefig(r"C:\Users\abhiu\Desktop\college stuff\sem 6\Deep Learning\gan_images\%d.png" %  epoch)
+  fig.savefig(r"C:\Users\abhiu\Desktop\college stuff\sem 6\Deep Learning\gan_images\MNIST_DCGAN\%d.png" %  epoch)
   plt.close()
 
 #main training loops

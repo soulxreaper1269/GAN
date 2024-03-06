@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
+from tensorflow.keras import layers, models
 from tensorflow.keras.optimizers import SGD, Adam
 from tensorflow.keras.layers import Input, Dense, LeakyReLU, Dropout, BatchNormalization
 
@@ -35,17 +36,29 @@ latent_dim=256
 #Generator
 
 def build_generator(latent_dim):
-  i=Input(shape=(latent_dim,))
-  x=Dense(256, activation=LeakyReLU(alpha=0.2))(i)
-  x=BatchNormalization(momentum=0.8)(x)
-  x=Dense(512,activation=LeakyReLU(alpha=0.2))(x)
-  x=BatchNormalization(momentum=0.8)(x)
-  x=Dense(1024,activation=LeakyReLU(alpha=0.2))(x)
-  x=BatchNormalization(momentum=0.8)(x)
-  x=Dense(d,activation='tanh')(x)
+    model = models.Sequential()
+    model.add(layers.Dense(7*7*256, use_bias=False, input_shape=(latent_dim,)))
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
 
-  model=Model(i,x)
-  return model
+    model.add(layers.Reshape((7, 7, 256)))
+    assert model.output_shape == (None, 7, 7, 256)  # None is the batch size
+
+    model.add(layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
+    assert model.output_shape == (None, 7, 7, 128)
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+
+    model.add(layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
+    assert model.output_shape == (None, 14, 14, 64)
+    model.add(layers.BatchNormalization())
+    model.add(layers.LeakyReLU())
+
+    model.add(layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
+    assert model.output_shape == (None, 28, 28, 1)
+
+    return model
+
 
 # Discriminator
 
@@ -120,7 +133,7 @@ def sample_images(epoch):
       axs[i,j].imshow(img[idx].reshape(h,w),cmap='gray')
       axs[i,j].axis('off')
       idx+=1
-  fig.savefig(r"C:\Users\abhiu\Desktop\college stuff\sem 6\Deep Learning\gan_images\%d.png" %  epoch)
+  fig.savefig(r"C:\Users\abhiu\Desktop\college stuff\sem 6\Deep Learning\gan_images\MNIST_DCGAN\%d.png" %  epoch)
   plt.close()
 
 #main training loops
